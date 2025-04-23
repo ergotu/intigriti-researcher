@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 type (
@@ -18,12 +19,41 @@ type Activity struct {
 	ProgramID string         `json:"programId"`
 	Activity  ActivityDetail `json:"activity"`
 	Type      ActivityType   `json:"type"`
-	CreatedAt int            `json:"createdAt"`
+	CreatedAt int64          `json:"createdAt"`
 	Following bool           `json:"following"`
 }
 
-func (c *Client) GetActivities() ([]Activity, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/programs/activities", c.BaseURL), nil)
+// GetActivitiesOptions defines the optional parameters for the GetActivities method
+type GetActivitiesOptions struct {
+	CreatedSince *int64
+	Following    *bool
+	Limit        *int
+	Offset       *int
+}
+
+func (c *Client) GetActivities(opts GetActivitiesOptions) ([]Activity, error) {
+	baseURL := fmt.Sprintf("%s/v1/programs/activities", c.BaseURL)
+	params := url.Values{}
+
+	if opts.CreatedSince != nil {
+		params.Add("createdSince", fmt.Sprintf("%d", *opts.CreatedSince))
+	}
+	if opts.Following != nil {
+		params.Add("following", fmt.Sprintf("%t", *opts.Following))
+	}
+	if opts.Limit != nil {
+		params.Add("limit", fmt.Sprintf("%d", *opts.Limit))
+	}
+	if opts.Offset != nil {
+		params.Add("offset", fmt.Sprintf("%d", *opts.Offset))
+	}
+
+	fullURL := baseURL
+	if len(params) > 0 {
+		fullURL += "?" + params.Encode()
+	}
+
+	req, err := http.NewRequest("GET", fullURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +66,7 @@ func (c *Client) GetActivities() ([]Activity, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch program detail: %s", resp.Status)
+		return nil, fmt.Errorf("failed to fetch activities: %s", resp.Status)
 	}
 
 	var result struct {
