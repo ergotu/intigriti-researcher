@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 type Program struct {
@@ -30,8 +31,40 @@ type MaxBounty struct {
 	Currency string  `json:"currency"`
 }
 
-func (c *Client) GetPrograms() ([]Program, error) {
-	req, err := http.NewRequest("GET", c.BaseURL+"/v1/programs", nil)
+type GetProgramsOptions struct {
+	StatusID  *int
+	TypeID    *int
+	Following *bool
+	Limit     *int
+	Offset    *int
+}
+
+func (c *Client) GetPrograms(opts GetProgramsOptions) ([]Program, error) {
+	baseURL := c.BaseURL + "/v1/programs"
+	params := url.Values{}
+
+	if opts.StatusID != nil {
+		params.Add("statusId", fmt.Sprintf("%d", *opts.StatusID))
+	}
+	if opts.TypeID != nil {
+		params.Add("typeId", fmt.Sprintf("%d", *opts.TypeID))
+	}
+	if opts.Following != nil {
+		params.Add("following", fmt.Sprintf("%t", *opts.Following))
+	}
+	if opts.Limit != nil {
+		params.Add("limit", fmt.Sprintf("%d", *opts.Limit))
+	}
+	if opts.Offset != nil {
+		params.Add("offset", fmt.Sprintf("%d", *opts.Offset))
+	}
+
+	fullURL := baseURL
+	if len(params) > 0 {
+		fullURL += "?" + params.Encode()
+	}
+
+	req, err := http.NewRequest("GET", fullURL, nil)
 	if err != nil {
 		return nil, err
 	}
